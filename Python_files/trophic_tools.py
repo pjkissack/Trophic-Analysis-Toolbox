@@ -2,11 +2,12 @@
 This Python module is for conducting trophic analysis as introduced by MacKay, Johnson and Sansom in [1], and also provides tools developed for network visualisation using these methods.
 Equation numbers refered to in annotation are from [1].
 
-If you make use of code provided here please site [1].
+If you make use of code provided here please cite [1].
 
 Functions included are:
 - trophic_levels : returns trophic levels as per [1]
 - trophic_incoherence : returns trophic incoherence as per [1] (where trophic coherence is 1-incoherence)
+- HHD : returns Helmholtz-Hodge Decomposition of network
 - trophic_layout : returns a layout where y-possitions are given by trophic levels, and x-possitions based on a modified force-directed graph drawing algorithm to spread nodes out on the x-axis. For reproducibility, user can save and specify seed.
 - trophic_plot : plots network according to trophic_layout
 
@@ -40,7 +41,7 @@ import matplotlib.pyplot as plt
 
 #### --- TROPHIC ANALYSIS --- #####
 
-# Define function to obtaion trophic levels
+# Define function to obtain trophic levels
 
 def trophic_levels(G):
     '''
@@ -60,9 +61,9 @@ def trophic_levels(G):
     # Check network weakly connected
     G2 = G.to_undirected(reciprocal=False,as_view=True)
     if nx.is_connected(G2):
-        W = nx.adj_matrix(G)                  # weighted adjacency matrix as Compressed Sparse Row format sparse matrix of type '<class 'numpy.longlong'>'
-        in_weight = W.sum(axis=0).A1          # Eq.2.1
-        out_weight = W.sum(axis=1).A1         # Eq.2.1
+        W = nx.adjacency_matrix(G)                  # weighted adjacency matrix as Compressed Sparse Row format sparse matrix of type '<class 'numpy.longlong'>'
+        in_weight = W.sum(axis=0)          # Eq.2.1
+        out_weight = W.sum(axis=1)         # Eq.2.1
         u = in_weight + out_weight            # (total) weight Eq.2.2
         v = in_weight - out_weight            # imbalance Eq.2.3 (the difference between the flow into and out of the node)
         L = diags(u, 0) - (W + W.transpose()) # (weighted) graph-Laplacian operator Eq.2.5
@@ -93,7 +94,7 @@ def trophic_incoherence(G):
     # FUNCTION
     
     h = trophic_levels(G)
-    W = nx.adj_matrix(G)
+    W = nx.adjacency_matrix(G)
     hj, hi = np.meshgrid(h, h)
     H=np.power([hj-hi-1],2)
     F_0 = (W.multiply(H)).sum() / W.sum()
@@ -127,20 +128,20 @@ def HHD(G):
     h = trophic_levels(G)
     
     # Obtain flow decompossition F=F_c+F_p
-    W = nx.adj_matrix(G).todense()
+    W = nx.adjacency_matrix(G)
     hj, hi = np.meshgrid(h, h)
     H=hj-hi
-    F_p = np.multiply(W ,H)
+    F_p = np.multiply(W.todense() ,H)
     F_c = W - F_p
     
     # Directed network with possitive sign ordered pairs
-    for i in range(len(W)):
-        for j in range(len(W)):
+    for i in range(W.shape[0]):
+        for j in range(W.shape[0]):
             if F_p[i,j]<0:
                 F_p[j,i]=F_p[j,i]+abs(F_p[i,j])
                 F_p[i,j]=0
-    for i in range(len(W)):
-        for j in range(len(W)):
+    for i in range(W.shape[0]):
+        for j in range(W.shape[0]):
             if F_c[i,j]<0:
                 F_c[j,i]=F_c[j,i]+abs(F_c[i,j])
                 F_c[i,j]=0
